@@ -1,3 +1,4 @@
+import JSZip from 'jszip';
 import { ModelLoader } from '../lib/modelLoader';
 import { GitRepositoryParser, RepositoryData } from '../lib/gitParser';
 import { ReasoningOrchestrator } from '../lib/reasoning/orchestrator';
@@ -9,16 +10,20 @@ export class App {
   private gitParser: GitRepositoryParser;
   private reasoningOrchestrator: ReasoningOrchestrator;
   private repositoryData: RepositoryData | null = null;
+  private repoInput!: HTMLInputElement;
+  private loadButton!: HTMLButtonElement;
   private chatMessages!: HTMLElement;
   private chatInput!: HTMLTextAreaElement;
   private sendButton!: HTMLButtonElement;
-  private uploadArea!: HTMLElement;
   private statusDiv!: HTMLElement;
-  private repoInfoDiv!: HTMLElement;
   private reasoningSummaryEl!: HTMLElement;
   private securityListEl!: HTMLElement;
   private architectureListEl!: HTMLElement;
   private qualityListEl!: HTMLElement;
+  private icons = {
+    user: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>',
+    assistant: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 8v5"/><path d="M8 16v-4a4 4 0 0 1 8 0v4"/><path d="M9 20h6"/><path d="M8 20a2 2 0 1 0 4 0"/><path d="M12 20a2 2 0 1 0 4 0"/></svg>'
+  };
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -30,170 +35,53 @@ export class App {
   }
 
   private render(): void {
-    // Generate matrix background
-    const matrixChars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
-    const matrixHTML = Array.from({ length: 200 }, () => 
-      `<span>${matrixChars[Math.floor(Math.random() * matrixChars.length)]}</span>`
-    ).join('');
-
     this.container.innerHTML = `
-      <div class="jp-matrix">${matrixHTML}</div>
       <div class="app-container">
         <div class="header">
-          <h1>🔍 sked — Local Repo Intelligence</h1>
+          <h1>sked — Local Repo Intelligence</h1>
           <p>All-client analysis with multi-model AI and deep reasoning</p>
-          <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 20px;">
-            <label class="torch-container" style="color: white; font-size: 0.9rem;">
-              <input type="checkbox" id="model-toggle" checked>
-              <span style="margin-bottom: 10px; display: block;">Model Enabled</span>
-              <div class="torch">
-                <div class="head">
-                  <div class="face top">
-                    <div></div><div></div><div></div><div></div>
-                  </div>
-                  <div class="face left">
-                    <div></div><div></div><div></div><div></div>
-                  </div>
-                  <div class="face right">
-                    <div></div><div></div><div></div><div></div>
-                  </div>
-                </div>
-                <div class="stick">
-                  <div class="side side-left">
-                    ${Array.from({ length: 16 }, () => '<div></div>').join('')}
-                  </div>
-                  <div class="side side-right">
-                    ${Array.from({ length: 16 }, () => '<div></div>').join('')}
-                  </div>
-                </div>
-              </div>
-            </label>
-          </div>
         </div>
 
-        <div class="main-content">
-          <div class="card">
-            <h2>📁 Repository Upload</h2>
-            <div class="upload-section">
-              <div class="upload-area" id="upload-area">
-                <div class="upload-icon">📂</div>
-                <p><strong>Click to select a directory</strong> or drag and drop</p>
-                <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
-                  Select the root directory of your Git repository
-                </p>
-                <input type="file" id="file-input" webkitdirectory multiple style="display: none;">
-              </div>
-              <div id="status"></div>
-              <div id="loader-container" style="display: none; margin: 20px 0; text-align: center;">
-                <div class="loader">
-                  <div class="truckWrapper">
-                    <div class="truckBody" style="font-size: 60px;">🚚</div>
-                    <div class="truckTires">
-                      <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#333"/></svg>
-                      <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#333"/></svg>
-                    </div>
-                    <div class="road"></div>
-                  </div>
-                </div>
-                <p style="margin-top: 10px; color: #666;">Processing files...</p>
-              </div>
-              <div id="repo-info" style="display: none; margin-top: 16px;">
-                <div class="card-3d">
-                  <div class="card-3d-tracker"></div>
-                  <div class="card-3d-content">
-                    <div class="card-content">
-                      <div class="card-3d-prompt">Hover for details</div>
-                      <div class="card-3d-title" id="repo-title">Repository</div>
-                      <div class="card-3d-subtitle" id="repo-subtitle">Loaded</div>
-                    </div>
-                  </div>
-                </div>
-                <div id="file-tree-container" class="file-tree-container">
-                  <h4 style="margin-bottom: 8px; color: #667eea; font-size: 0.9rem;">📁 File Tree:</h4>
-                  <div id="file-tree"></div>
-                </div>
-              </div>
+        <div class="main">
+          <div class="panel">
+            <h2>Repository</h2>
+            <div class="input-row">
+              <input id="repo-url" class="text-input" placeholder="https://github.com/org/repo" />
+              <button id="load-btn" class="button">Fetch</button>
             </div>
+            <div id="status" class="status info">Enter a Git URL to analyze.</div>
+            <div id="file-tree" class="file-tree" style="display:none;"></div>
           </div>
 
-          <div class="card">
-            <h2>💬 Ask Questions</h2>
-            <div style="margin-bottom: 12px;">
-              <label style="font-size: 0.9rem; color: #666; margin-bottom: 8px; display: block;">Analysis Type:</label>
-              <div class="radio-container">
-                <div class="radio-wrapper">
-                  <input type="radio" name="analysis-type" id="type-security" class="input" value="security" checked>
-                  <div class="radio-btn">Security</div>
-                </div>
-                <div class="radio-wrapper">
-                  <input type="radio" name="analysis-type" id="type-code" class="input" value="code">
-                  <div class="radio-btn">Code</div>
-                </div>
-                <div class="radio-wrapper">
-                  <input type="radio" name="analysis-type" id="type-arch" class="input" value="architecture">
-                  <div class="radio-btn">Arch</div>
-                </div>
-              </div>
-            </div>
-            <div id="quick-actions" style="display: none; margin-bottom: 12px; padding: 12px; background: #f8f9ff; border-radius: 8px;">
-              <label style="font-size: 0.9rem; color: #666; margin-bottom: 8px; display: block;">Quick Actions:</label>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <button class="quick-action-btn" data-question="Find all security vulnerabilities and potential exploits in this codebase. Include file paths, line numbers, and exploit vectors.">🔍 Find Exploits</button>
-                <button class="quick-action-btn" data-question="Explain what this codebase does. What is its main purpose and functionality?">📖 What Does This Do?</button>
-                <button class="quick-action-btn" data-question="Analyze the architecture and design patterns used. How is the code organized?">🏗️ Architecture Overview</button>
-                <button class="quick-action-btn" data-question="Find all hardcoded secrets, API keys, passwords, or sensitive data.">🔑 Find Secrets</button>
-                <button class="quick-action-btn" data-question="Identify all SQL injection, XSS, CSRF, and other injection vulnerabilities.">💉 Injection Vulnerabilities</button>
-                <button class="quick-action-btn" data-question="What are the main entry points and attack surfaces in this application?">🎯 Attack Surfaces</button>
-                <button class="quick-action-btn" data-question="Explain the authentication and authorization mechanisms. Are there any flaws?">🔐 Auth Analysis</button>
-                <button class="quick-action-btn" data-question="What dependencies are used and what are their security implications?">📦 Dependencies</button>
-              </div>
-            </div>
-            <div id="reasoning-panel" class="reasoning-panel">
-              <div id="reasoning-summary" class="status info">Reasoning insights will appear here after you ask a question.</div>
-              <div class="reasoning-lists">
-                <div>
-                  <h4>Security</h4>
-                  <ul id="security-insights" class="insight-list"></ul>
-                </div>
-                <div>
-                  <h4>Architecture</h4>
-                  <ul id="architecture-insights" class="insight-list"></ul>
-                </div>
-                <div>
-                  <h4>Code Quality</h4>
-                  <ul id="quality-insights" class="insight-list"></ul>
-                </div>
-              </div>
-            </div>
-            <div class="chat-container">
-              <div class="chat-messages" id="chat-messages">
+          <div class="panel">
+            <h2>Ask sked</h2>
+            <div class="chat">
+              <div class="messages" id="chat-messages">
                 <div class="message assistant">
-                  <div class="message-header">Assistant</div>
+                  <div class="message-header"><span>Assistant</span></div>
                   <div class="message-content">
-                    👋 Welcome to sked. Upload a repo to start a full local analysis. I can help you with:
-                    <ul style="margin-top: 8px; padding-left: 20px;">
-                      <li>Code functionality and architecture</li>
-                      <li>Security vulnerabilities</li>
-                      <li>Potential exploits</li>
-                      <li>Code quality and best practices</li>
-                    </ul>
+                    Welcome to sked. Fetch a repo to start a full local analysis. I can help with architecture, security, exploits, and code quality.
                   </div>
                 </div>
               </div>
-              <div class="chat-input-container">
-                <div class="input-container">
-                  <textarea 
-                    id="chat-input" 
-                    class="input" 
-                    placeholder="Ask a question about the repository..."
-                    rows="2"
-                    disabled
-                  ></textarea>
-                  <label class="label">Question</label>
-                  <span class="topline"></span>
-                  <span class="underline"></span>
-                </div>
-                <button id="send-button" class="button type1" disabled></button>
+              <div class="input-area">
+                <textarea 
+                  id="chat-input" 
+                  class="textarea" 
+                  placeholder="Ask a question about the repository..."
+                  rows="2"
+                  disabled
+                ></textarea>
+                <button id="send-button" class="button" disabled>Send</button>
+              </div>
+            </div>
+            <div class="reasoning">
+              <h4>Reasoning</h4>
+              <div id="reasoning-summary" class="status info">Reasoning insights will appear here after you ask a question.</div>
+              <div class="insights">
+                <ul id="security-insights"></ul>
+                <ul id="architecture-insights"></ul>
+                <ul id="quality-insights"></ul>
               </div>
             </div>
           </div>
@@ -201,10 +89,10 @@ export class App {
       </div>
     `;
 
-    this.uploadArea = this.container.querySelector('#upload-area')!;
-    this.statusDiv = this.container.querySelector('#status')!;
-    this.repoInfoDiv = this.container.querySelector('#repo-info')!;
-    this.chatMessages = this.container.querySelector('#chat-messages')!;
+    this.repoInput = this.container.querySelector('#repo-url') as HTMLInputElement;
+    this.loadButton = this.container.querySelector('#load-btn') as HTMLButtonElement;
+    this.statusDiv = this.container.querySelector('#status') as HTMLElement;
+    this.chatMessages = this.container.querySelector('#chat-messages') as HTMLElement;
     this.chatInput = this.container.querySelector('#chat-input') as HTMLTextAreaElement;
     this.sendButton = this.container.querySelector('#send-button') as HTMLButtonElement;
     this.reasoningSummaryEl = this.container.querySelector('#reasoning-summary') as HTMLElement;
@@ -216,37 +104,11 @@ export class App {
   }
 
   private setupEventListeners(): void {
-    const fileInput = this.container.querySelector('#file-input') as HTMLInputElement;
-
-    // Click to select directory
-    this.uploadArea.addEventListener('click', () => {
-      fileInput.click();
-    });
-
-    // Drag and drop
-    this.uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      this.uploadArea.classList.add('dragover');
-    });
-
-    this.uploadArea.addEventListener('dragleave', () => {
-      this.uploadArea.classList.remove('dragover');
-    });
-
-    this.uploadArea.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      this.uploadArea.classList.remove('dragover');
-      const files = Array.from(e.dataTransfer?.files || []);
-      if (files.length > 0) {
-        await this.processFiles(files);
-      }
-    });
-
-    // File input change
-    fileInput.addEventListener('change', async (e) => {
-      const files = Array.from((e.target as HTMLInputElement).files || []);
-      if (files.length > 0) {
-        await this.processFiles(files);
+    this.loadButton.addEventListener('click', () => this.handleFetch());
+    this.repoInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.handleFetch();
       }
     });
 
@@ -261,126 +123,110 @@ export class App {
     this.sendButton.addEventListener('click', () => {
       this.sendMessage();
     });
-
-    // Model toggle
-    const modelToggle = this.container.querySelector('#model-toggle') as HTMLInputElement;
-    if (modelToggle) {
-      modelToggle.addEventListener('change', (e) => {
-        const enabled = (e.target as HTMLInputElement).checked;
-        if (!enabled) {
-          this.showStatus('Model disabled. Enable it to use AI analysis.', 'warning');
-        } else {
-          this.showStatus('Model enabled. Ready for analysis.', 'success');
-        }
-      });
-    }
-
-    // Quick action buttons
-    const quickActionBtns = this.container.querySelectorAll('.quick-action-btn');
-    quickActionBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const question = (btn as HTMLElement).dataset.question || '';
-        if (question && this.repositoryData) {
-          this.chatInput.value = question;
-          this.chatInput.focus();
-          // Auto-send
-          setTimeout(() => {
-            this.sendMessage();
-          }, 100);
-        }
-      });
-    });
   }
 
-  private async processFiles(files: File[]): Promise<void> {
-    this.showStatus('Processing repository files...', 'info');
-    this.showLoader(true);
+  private async handleFetch(): Promise<void> {
+    const url = this.repoInput.value.trim();
+    if (!url) {
+      this.showStatus('Enter a Git URL to analyze.', 'error');
+      return;
+    }
+    this.showStatus('Fetching repository...', 'info');
+    this.updateReasoningUI(null);
+    this.chatInput.disabled = true;
+    this.sendButton.disabled = true;
 
     try {
-      // Create a virtual file system from the uploaded files
-      const fileMap = new Map<string, File>();
-      
-      for (const file of files) {
-        // Remove leading path separators and normalize
-        const path = file.webkitRelativePath || file.name;
-        fileMap.set(path, file);
-      }
-
-      const totalEntries = Array.from(fileMap.entries()).filter(([path]) => !path.includes('.git/')).length;
-      // Convert File objects to RepositoryFile format
-      const repositoryFiles: any[] = [];
-      let totalSize = 0;
-      let processedCount = 0;
-
-      for (const [path, file] of fileMap.entries()) {
-        if (path.includes('.git/')) continue; // Skip .git directory
-        
-        try {
-          const { content } = await this.readFileContentStrict(file);
-          repositoryFiles.push({
-            path,
-            content,
-            size: content.length,
-            type: 'file'
-          });
-          totalSize += content.length;
-          processedCount++;
-
-          if (processedCount % 10 === 0 || processedCount === totalEntries) {
-            const progressPercent = Math.round((processedCount / totalEntries) * 100);
-            this.showStatus(`Processing files... ${processedCount}/${totalEntries} (${progressPercent}%) - ${(totalSize / 1024).toFixed(2)} KB loaded`, 'info');
-          }
-        } catch (err) {
-          console.warn(`Skipping file ${path}:`, err);
-        }
-      }
-
-      // Build structure
-      const structure = this.buildStructure(repositoryFiles);
-
-      this.repositoryData = {
-        files: repositoryFiles,
-        commits: [],
-        structure,
-        totalFiles: repositoryFiles.length,
-        totalSize
-      };
-
-      this.showStatus(`Repository loaded: ${repositoryFiles.length} files`, 'success');
-      this.showLoader(false);
-      this.showRepositoryInfo();
+      const data = await this.fetchRepositoryFromUrl(url);
+      this.repositoryData = data;
+      this.updateFileTree();
+      this.showStatus(`Repository loaded: ${data.totalFiles} files | ${(data.totalSize / 1024).toFixed(2)} KB`, 'success');
       this.chatInput.disabled = false;
       this.sendButton.disabled = false;
-      this.updateReasoningUI(null);
-
-      // Show quick actions
-      const quickActions = this.container.querySelector('#quick-actions') as HTMLElement;
-      if (quickActions) {
-        quickActions.style.display = 'block';
-      }
     } catch (error) {
-      console.error('Error processing repository:', error);
-      this.showLoader(false);
-      this.showStatus(`Error: ${error instanceof Error ? error.message : 'Failed to process repository'}`, 'error');
+      console.error('Fetch error:', error);
+      this.showStatus(`Error: ${error instanceof Error ? error.message : 'Failed to fetch repository'}`, 'error');
     }
   }
 
-  private async readFileContentStrict(file: File): Promise<{ content: string; isBinary: boolean }> {
-    const buffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
+  private async fetchRepositoryFromUrl(repoUrl: string): Promise<RepositoryData> {
+    const candidates = this.buildZipUrls(repoUrl);
+    let resp: Response | null = null;
+    for (const candidate of candidates) {
+      try {
+        const r = await fetch(candidate);
+        if (r.ok) {
+          resp = r;
+          break;
+        }
+      } catch {
+        // try next
+      }
+    }
+    if (!resp) throw new Error('Could not fetch repository zip (tried main/master).');
 
+    const blob = await resp.blob();
+    const zip = await JSZip.loadAsync(blob);
+
+    const repositoryFiles: any[] = [];
+    let totalSize = 0;
+    const entries = Object.values(zip.files);
+    for (const entry of entries) {
+      if (entry.dir) continue;
+      const normalized = this.normalizeZipPath(entry.name);
+      if (!normalized || normalized.includes('/.git/')) continue;
+
+      const bytes = await entry.async('uint8array');
+      const { content } = this.decodeBytes(bytes);
+      repositoryFiles.push({
+        path: normalized,
+        content,
+        size: content.length,
+        type: 'file'
+      });
+      totalSize += content.length;
+    }
+
+    const structure = this.buildStructure(repositoryFiles);
+    return {
+      files: repositoryFiles,
+      commits: [],
+      structure,
+      totalFiles: repositoryFiles.length,
+      totalSize
+    };
+  }
+
+  private buildZipUrls(repoUrl: string): string[] {
+    const cleaned = repoUrl.replace(/\.git$/, '');
+    const parts = cleaned.split('/');
+    const owner = parts[3];
+    const repo = parts[4];
+    let branch = 'main';
+    if (parts[5] === 'tree' && parts[6]) {
+      branch = parts[6];
+    }
+    const base = `https://codeload.github.com/${owner}/${repo}/zip/refs/heads`;
+    return [`${base}/${branch}`, `${base}/main`, `${base}/master`];
+  }
+
+  private normalizeZipPath(path: string): string {
+    // Remove leading top-level folder from GitHub zip (repo-branch/)
+    const segments = path.split('/');
+    if (segments.length <= 1) return '';
+    segments.shift();
+    return segments.join('/');
+  }
+
+  private decodeBytes(bytes: Uint8Array): { content: string; isBinary: boolean } {
     const binaryScore = this.computeBinaryScore(bytes);
     const isBinary = binaryScore > 0.15;
-
     if (isBinary) {
-      // Represent binary as base64 to preserve data without choking the LLM with raw bytes
       const base64 = this.toBase64(bytes);
       return { content: `[BINARY FILE - base64]\n${base64}`, isBinary: true };
     }
-
     const decoder = new TextDecoder('utf-8', { fatal: false });
-    const text = decoder.decode(bytes);
-    return { content: text, isBinary: false };
+    return { content: decoder.decode(bytes), isBinary: false };
   }
 
   private computeBinaryScore(bytes: Uint8Array): number {
@@ -447,39 +293,19 @@ export class App {
     this.statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
   }
 
-  private showLoader(show: boolean): void {
-    const loaderContainer = this.container.querySelector('#loader-container') as HTMLElement;
-    if (loaderContainer) {
-      loaderContainer.style.display = show ? 'block' : 'none';
-    }
-  }
-
-  private showRepositoryInfo(): void {
+  private updateFileTree(): void {
     if (!this.repositoryData) return;
-
-    this.repoInfoDiv.style.display = 'block';
-    const titleEl = this.repoInfoDiv.querySelector('#repo-title') as HTMLElement;
-    const subtitleEl = this.repoInfoDiv.querySelector('#repo-subtitle') as HTMLElement;
-    const fileTreeContainer = this.repoInfoDiv.querySelector('#file-tree-container') as HTMLElement;
-    const fileTree = this.repoInfoDiv.querySelector('#file-tree') as HTMLElement;
-    
-    if (titleEl) {
-      titleEl.textContent = `${this.repositoryData.totalFiles} Files`;
-    }
-    if (subtitleEl) {
-      subtitleEl.innerHTML = `${(this.repositoryData.totalSize / 1024).toFixed(2)} KB <span class="highlight">Analyzed</span>`;
-    }
-
-    // Show file tree
-    if (fileTreeContainer && fileTree) {
-      fileTreeContainer.style.display = 'block';
-      const formattedTree = this.repositoryData.structure
-        .split('\n')
-        .slice(0, 50) // Limit display for performance
-        .map(line => `<div class="file-tree-item">${line}</div>`)
-        .join('');
-      fileTree.innerHTML = formattedTree + (this.repositoryData.structure.split('\n').length > 50 ? '<div class="file-tree-item">... (truncated for display)</div>' : '');
-    }
+    const fileTree = this.container.querySelector('#file-tree') as HTMLElement;
+    if (!fileTree) return;
+    fileTree.style.display = 'block';
+    const formattedTree = this.repositoryData.structure
+      .split('\n')
+      .filter(Boolean)
+      .slice(0, 120)
+      .map(line => `<div>${line}</div>`)
+      .join('');
+    const more = this.repositoryData.structure.split('\n').length > 120 ? '<div>... (truncated for display)</div>' : '';
+    fileTree.innerHTML = formattedTree + more;
   }
 
   private updateReasoningUI(result: CombinedReasoning | null): void {
@@ -509,25 +335,14 @@ export class App {
     const question = this.chatInput.value.trim();
     if (!question || !this.repositoryData) return;
 
-    // Check if model is enabled
-    const modelToggle = this.container.querySelector('#model-toggle') as HTMLInputElement;
-    if (modelToggle && !modelToggle.checked) {
-      this.addMessage('assistant', 'Please enable the model using the torch switch above to use AI analysis.');
-      return;
-    }
-
-    // Get analysis type
-    const analysisType = (this.container.querySelector('input[name="analysis-type"]:checked') as HTMLInputElement)?.value || 'security';
-
     // Add user message
     this.addMessage('user', question);
     this.chatInput.value = '';
     this.chatInput.disabled = true;
     this.sendButton.disabled = true;
 
-    // Show loading with truck
-    this.showLoader(true);
     const loadingId = this.addMessage('assistant', 'Analyzing repository...', true);
+    this.showStatus('Analyzing...', 'info');
 
     try {
       // 1. Pre-processing & Reasoning (OpenReason + AdaReasoner)
@@ -548,15 +363,15 @@ export class App {
       
       // Get response from model (with Multi-Model support)
       // Pass reasoning insights to model
-      const response = await this.modelLoader.analyzeRepository(context, question, reasoningResult.summary, analysisType);
+      const response = await this.modelLoader.analyzeRepository(context, question, reasoningResult.summary, 'general');
       
       // Update message
       this.updateMessage(loadingId, response);
-      this.showLoader(false);
+      this.showStatus('Ready.', 'success');
     } catch (error) {
       console.error('Error generating response:', error);
       this.updateMessage(loadingId, `Error: ${error instanceof Error ? error.message : 'Failed to generate response'}`);
-      this.showLoader(false);
+      this.showStatus('Error during analysis.', 'error');
     } finally {
       this.chatInput.disabled = false;
       this.sendButton.disabled = false;
@@ -572,7 +387,7 @@ export class App {
     
     const header = document.createElement('div');
     header.className = 'message-header';
-    header.textContent = role === 'user' ? 'You' : 'Assistant';
+    header.innerHTML = `${role === 'user' ? this.icons.user : this.icons.assistant} ${role === 'user' ? 'You' : 'Assistant'}`;
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';

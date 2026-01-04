@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@mlc-ai/web-llm": "^0.2.45"
+    "@mlc-ai/web-llm": "^0.2.45",
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
