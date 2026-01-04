@@ -81,7 +81,7 @@ export class ModelManager {
 
   async initialize(
     modelId: string = MODELS.PRIMARY.id,
-    progressCallback?: (step: string) => void
+    progressCallback?: (report: InitProgressReport) => void
   ): Promise<void> {
     if (this.currentEngine && this.currentModelId === modelId) {
       return;
@@ -103,7 +103,12 @@ export class ModelManager {
         {
           appConfig: appConfig as any,
           initProgressCallback: (report) => {
-            if (this.progressCallback) this.progressCallback(report);
+            if (progressCallback) {
+              progressCallback(report);
+            }
+            if (this.progressCallback) {
+              this.progressCallback(report);
+            }
           }
         }
       );
