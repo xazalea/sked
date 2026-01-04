@@ -270,21 +270,29 @@ export class App {
   }
 
   private async fetchRepositoryFromUrl(repoUrl: string): Promise<RepositoryData> {
-     // Re-using existing logic
     const candidates = this.buildZipUrls(repoUrl);
     let resp: Response | null = null;
+    let lastError: Error | null = null;
+
     for (const candidate of candidates) {
       try {
+        console.log(`Trying to fetch zip from: ${candidate}`);
         const r = await fetch(candidate);
         if (r.ok) {
           resp = r;
           break;
+        } else {
+            console.warn(`Failed to fetch ${candidate}: ${r.status} ${r.statusText}`);
         }
-      } catch {
-        // try next
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e));
+        console.warn(`Network error fetching ${candidate}:`, e);
       }
     }
-    if (!resp) throw new Error('Could not fetch repository zip (tried main/master).');
+
+    if (!resp) {
+        throw new Error(`Could not fetch repository zip. Checked ${candidates.length} URLs. Last error: ${lastError?.message || '404 Not Found'}`);
+    }
 
     const blob = await resp.blob();
     const zip = await JSZip.loadAsync(blob);
@@ -322,14 +330,40 @@ export class App {
   private buildZipUrls(repoUrl: string): string[] {
     const cleaned = repoUrl.replace(/\.git$/, '');
     const parts = cleaned.split('/');
-    const owner = parts[3];
-    const repo = parts[4];
-    let branch = 'main';
-    if (parts[5] === 'tree' && parts[6]) {
-      branch = parts[6];
+    // Handle URL formats like:
+    // https://github.com/owner/repo
+    // https://github.com/owner/repo/tree/branch
+    
+    // Find 'github.com' index to locate owner/repo reliably
+    const githubIndex = parts.findIndex(p => p.includes('github.com'));
+    if (githubIndex === -1 || parts.length < githubIndex + 3) {
+        // Fallback for non-standard or direct formats if needed, or return empty to fail fast
+        return [];
     }
-    const base = `https://codeload.github.com/${owner}/${repo}/zip/refs/heads`;
-    return [`${base}/${branch}`, `${base}/main`, `${base}/master`];
+    
+    const owner = parts[githubIndex + 1];
+    const repo = parts[githubIndex + 2];
+    
+    let branch = 'main';
+    // Check for /tree/branch pattern
+    const treeIndex = parts.indexOf('tree');
+    if (treeIndex > -1 && parts[treeIndex + 1]) {
+      branch = parts[treeIndex + 1];
+    }
+
+    const codeloadBase = `https://codeload.github.com/${owner}/${repo}/zip/refs/heads`;
+    const apiBase = `https://api.github.com/repos/${owner}/${repo}/zipball`;
+
+    // Prioritize specific branch if found, then main, then master
+    // Also try the API endpoint as a fallback (it redirects to codeload but might handle headers differently)
+    return [
+        `${codeloadBase}/${branch}`,
+        `${codeloadBase}/main`,
+        `${codeloadBase}/master`,
+        `${apiBase}/${branch}`,
+        `${apiBase}/main`,
+        `${apiBase}/master`
+    ];
   }
 
   private normalizeZipPath(path: string): string {

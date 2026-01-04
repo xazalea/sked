@@ -49,11 +49,17 @@ export class ModelManager {
       return { model_list: [] };
     }
 
+    // For the primary model (Qwen2.5), let web-llm handle the config automatically
+    // as it is likely in the prebuilt registry.
+    if (modelDef.id === MODELS.PRIMARY.id) {
+       return undefined;
+    }
+
     // Use a permissive any-typed config to satisfy TS while passing through to MLC.
     // Use the official WASM for Qwen2.5-0.5B from the latest prebuilt libs
     const baseWasm = modelDef.modelLib === 'qwen2'
-      ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v2_archives/Qwen2.5-0.5B-Instruct-q4f16_1-MLC/qwen2.5-0.5b-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm'
-      : 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v2_archives/Llama-2-7b-chat-hf-q4f32_1/llama-2-7b-chat-hf-q4f32_1-webgpu.wasm';
+      ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v2/Qwen2.5-0.5B-Instruct-q4f16_1-MLC/qwen2.5-0.5b-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm'
+      : 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v2/Llama-2-7b-chat-hf-q4f32_1/llama-2-7b-chat-hf-q4f32_1-webgpu.wasm';
 
     let modelRecord: any = {
       model_id: modelDef.id,
@@ -63,13 +69,7 @@ export class ModelManager {
       required_features: ['shader-f16']
     };
 
-    if (modelDef.id === MODELS.PRIMARY.id) {
-      // Use official MLC weights for primary model (Reliable, Sharded, Cache-friendly)
-      // This avoids large-file cache failures and CORS issues with direct GGUF
-      const mlcUrl = 'https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
-      modelRecord.model = mlcUrl;
-      modelRecord.model_url = mlcUrl; 
-    } else {
+    if (modelDef.id !== MODELS.PRIMARY.id) {
       // Fallback GGUF models
       const fallbackQwenUrl = 'https://huggingface.co/Triangle104/qwen2.5-.5b-uncensored-Q8_0-GGUF/resolve/main/qwen2.5-.5b-uncensored-q8_0.gguf';
       const fallbackLlamaUrl = 'https://huggingface.co/afrideva/llama2_xs_460M_uncensored-GGUF/resolve/main/llama2_xs_460m_uncensored.q8_0.gguf';
@@ -103,12 +103,8 @@ export class ModelManager {
     
     try {
       const appConfig = this.getAppConfig(modelId);
-      
-      this.currentEngine = await CreateMLCEngine(
-        modelId,
-        {
-          appConfig: appConfig as any,
-          initProgressCallback: (report) => {
+      const engineConfig: any = {
+          initProgressCallback: (report: InitProgressReport) => {
             if (progressCallback) {
               progressCallback(report);
             }
@@ -116,7 +112,15 @@ export class ModelManager {
               this.progressCallback(report);
             }
           }
-        }
+      };
+      
+      if (appConfig) {
+        engineConfig.appConfig = appConfig;
+      }
+
+      this.currentEngine = await CreateMLCEngine(
+        modelId,
+        engineConfig
       );
       this.currentModelId = modelId;
     } catch (error) {
