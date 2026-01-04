@@ -50,10 +50,10 @@ export class ModelManager {
     }
 
     // Use a permissive any-typed config to satisfy TS while passing through to MLC.
-    // Use the Qwen2-7B WASM (compatible with Qwen2.5-0.5B architecture)
+    // Use the official WASM for Qwen2.5-0.5B from the latest prebuilt libs
     const baseWasm = modelDef.modelLib === 'qwen2'
-      ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/qwen2-7b-instruct-q4f16_1-v1-webgpu.wasm'
-      : 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/llama-2-7b-chat-hf-q4f32_1-webgpu.wasm';
+      ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v2_archives/Qwen2.5-0.5B-Instruct-q4f16_1-MLC/qwen2.5-0.5b-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm'
+      : 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v2_archives/Llama-2-7b-chat-hf-q4f32_1/llama-2-7b-chat-hf-q4f32_1-webgpu.wasm';
 
     let modelRecord: any = {
       model_id: modelDef.id,
@@ -68,7 +68,7 @@ export class ModelManager {
       // This avoids large-file cache failures and CORS issues with direct GGUF
       const mlcUrl = 'https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
       modelRecord.model = mlcUrl;
-      modelRecord.model_url = mlcUrl;
+      modelRecord.model_url = mlcUrl; 
     } else {
       // Fallback GGUF models
       const fallbackQwenUrl = 'https://huggingface.co/Triangle104/qwen2.5-.5b-uncensored-Q8_0-GGUF/resolve/main/qwen2.5-.5b-uncensored-q8_0.gguf';

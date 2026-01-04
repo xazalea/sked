@@ -10,20 +10,17 @@ export class App {
   private gitParser: GitRepositoryParser;
   private reasoningOrchestrator: ReasoningOrchestrator;
   private repositoryData: RepositoryData | null = null;
-  private repoInput!: HTMLInputElement;
-  private loadButton!: HTMLButtonElement;
+  
+  // UI Elements
+  private landingInput!: HTMLInputElement;
+  private landingSubmit!: HTMLButtonElement;
+  private loadingStatus!: HTMLElement;
   private chatMessages!: HTMLElement;
   private chatInput!: HTMLTextAreaElement;
-  private sendButton!: HTMLButtonElement;
-  private statusDiv!: HTMLElement;
-  private reasoningSummaryEl!: HTMLElement;
-  private securityListEl!: HTMLElement;
-  private architectureListEl!: HTMLElement;
-  private qualityListEl!: HTMLElement;
-  private icons = {
-    user: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>',
-    assistant: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 8v5"/><path d="M8 16v-4a4 4 0 0 1 8 0v4"/><path d="M9 20h6"/><path d="M8 20a2 2 0 1 0 4 0"/><path d="M12 20a2 2 0 1 0 4 0"/></svg>'
-  };
+  private chatSendBtn!: HTMLButtonElement;
+  
+  // State
+  private currentView: 'landing' | 'loading' | 'chat' = 'landing';
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -36,120 +33,245 @@ export class App {
 
   private render(): void {
     this.container.innerHTML = `
-      <div class="app-container">
-        <div class="header">
-          <h1>sked — Local Repo Intelligence</h1>
-          <p>All-client analysis with multi-model AI and deep reasoning</p>
+      <div class="view-container active" id="landing-view">
+        <div class="input__container">
+          <div class="shadow__input"></div>
+          <button class="input__button__shadow" id="landing-submit">
+             <svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" height="20px" width="20px">
+              <path d="M4 9a5 5 0 1110 0A5 5 0 014 9zm5-7a7 7 0 104.2 12.6.999.999 0 00.093.107l3 3a1 1 0 001.414-1.414l-3-3a.999.999 0 00-.107-.093A7 7 0 009 2z" fill-rule="evenodd" fill="#17202A"></path>
+            </svg>
+          </button>
+          <input type="text" name="text" class="input__search" id="landing-input" placeholder="Enter Git URL (e.g. https://github.com/org/repo)">
         </div>
+      </div>
 
-        <div class="main">
-          <div class="panel">
-            <h2>Repository</h2>
-            <div class="input-row">
-              <input id="repo-url" class="text-input" placeholder="https://github.com/org/repo" />
-              <button id="load-btn" class="button">Fetch</button>
-            </div>
-            <div id="status" class="status info">Enter a Git URL to analyze.</div>
-            <div id="file-tree" class="file-tree" style="display:none;"></div>
+      <div class="view-container" id="loading-view">
+        <div class="loader">
+          <div class="box"></div>
+          <svg>
+            <defs>
+              <filter id="goo">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+                <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+              </filter>
+            </defs>
+            <mask id="clipping">
+              <g>
+                <!-- 7 Polygons as expected by the CSS for the gooey effect -->
+                <polygon points="50,15 65,40 35,40" /> 
+                <polygon points="85,50 60,65 60,35" />
+                <polygon points="75,85 50,60 100,60" />
+                <polygon points="25,85 50,60 0,60" />
+                <polygon points="15,50 40,65 40,35" />
+                <polygon points="50,50 60,60 40,60" />
+                <polygon points="50,50 55,45 45,45" />
+              </g>
+            </mask>
+          </svg>
+        </div>
+        <div class="status-overlay" id="loading-status">Initializing...</div>
+      </div>
+
+      <div class="view-container" id="chat-view">
+        <div class="chat-container">
+          <div class="chat-header">
+             <h1>sked</h1>
           </div>
-
-          <div class="panel">
-            <h2>Ask sked</h2>
-            <div class="chat">
-              <div class="messages" id="chat-messages">
-                <div class="message assistant">
-                  <div class="message-header"><span>Assistant</span></div>
-                  <div class="message-content">
-                    Welcome to sked. Fetch a repo to start a full local analysis. I can help with architecture, security, exploits, and code quality.
-                  </div>
-                </div>
-              </div>
-              <div class="input-area">
-                <textarea 
-                  id="chat-input" 
-                  class="textarea" 
-                  placeholder="Ask a question about the repository..."
-                  rows="2"
-                  disabled
-                ></textarea>
-                <button id="send-button" class="button" disabled>Send</button>
-              </div>
-            </div>
-            <div class="reasoning">
-              <h4>Reasoning</h4>
-              <div id="reasoning-summary" class="status info">Reasoning insights will appear here after you ask a question.</div>
-              <div class="insights">
-                <ul id="security-insights"></ul>
-                <ul id="architecture-insights"></ul>
-                <ul id="quality-insights"></ul>
-              </div>
-            </div>
+          <div class="chat-messages" id="chat-messages">
+             <div class="message assistant">
+               <div class="message-sender">Assistant</div>
+               <div class="message-bubble">
+                 Repository loaded. I can help with architecture, security, and quality analysis. What would you like to know?
+               </div>
+             </div>
+          </div>
+          <div class="chat-input-area">
+            <textarea class="chat-input" id="chat-input" placeholder="Ask a question about the codebase..."></textarea>
+            <button class="chat-send-btn" id="chat-send">Send</button>
           </div>
         </div>
       </div>
     `;
 
-    this.repoInput = this.container.querySelector('#repo-url') as HTMLInputElement;
-    this.loadButton = this.container.querySelector('#load-btn') as HTMLButtonElement;
-    this.statusDiv = this.container.querySelector('#status') as HTMLElement;
+    // Bind elements
+    this.landingInput = this.container.querySelector('#landing-input') as HTMLInputElement;
+    this.landingSubmit = this.container.querySelector('#landing-submit') as HTMLButtonElement;
+    this.loadingStatus = this.container.querySelector('#loading-status') as HTMLElement;
     this.chatMessages = this.container.querySelector('#chat-messages') as HTMLElement;
     this.chatInput = this.container.querySelector('#chat-input') as HTMLTextAreaElement;
-    this.sendButton = this.container.querySelector('#send-button') as HTMLButtonElement;
-    this.reasoningSummaryEl = this.container.querySelector('#reasoning-summary') as HTMLElement;
-    this.securityListEl = this.container.querySelector('#security-insights') as HTMLElement;
-    this.architectureListEl = this.container.querySelector('#architecture-insights') as HTMLElement;
-    this.qualityListEl = this.container.querySelector('#quality-insights') as HTMLElement;
+    this.chatSendBtn = this.container.querySelector('#chat-send') as HTMLButtonElement;
 
     this.setupEventListeners();
+    this.switchView('landing');
+  }
+
+  private switchView(view: 'landing' | 'loading' | 'chat'): void {
+    this.currentView = view;
+    
+    // Hide all
+    this.container.querySelectorAll('.view-container').forEach(el => {
+      el.classList.remove('active');
+    });
+
+    // Show current
+    const viewEl = this.container.querySelector(`#${view}-view`);
+    if (viewEl) viewEl.classList.add('active');
   }
 
   private setupEventListeners(): void {
-    this.loadButton.addEventListener('click', () => this.handleFetch());
-    this.repoInput.addEventListener('keydown', (e) => {
+    // Landing Page
+    this.landingSubmit.addEventListener('click', () => this.handleFetch());
+    this.landingInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         this.handleFetch();
       }
     });
 
-    // Chat input
+    // Chat Page
+    this.chatSendBtn.addEventListener('click', () => this.sendMessage());
     this.chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         this.sendMessage();
       }
     });
-
-    this.sendButton.addEventListener('click', () => {
-      this.sendMessage();
-    });
   }
 
   private async handleFetch(): Promise<void> {
-    const url = this.repoInput.value.trim();
+    const url = this.landingInput.value.trim();
     if (!url) {
-      this.showStatus('Enter a Git URL to analyze.', 'error');
+      alert('Please enter a Git URL');
       return;
     }
-    this.showStatus('Fetching repository...', 'info');
-    this.updateReasoningUI(null);
-    this.chatInput.disabled = true;
-    this.sendButton.disabled = true;
+
+    this.switchView('loading');
+    this.updateStatus('Fetching repository...');
 
     try {
       const data = await this.fetchRepositoryFromUrl(url);
       this.repositoryData = data;
-      this.updateFileTree();
-      this.showStatus(`Repository loaded: ${data.totalFiles} files | ${(data.totalSize / 1024).toFixed(2)} KB`, 'success');
-      this.chatInput.disabled = false;
-      this.sendButton.disabled = false;
+      this.updateStatus(`Analyzed ${data.totalFiles} files. Preparing chat...`);
+      
+      // Artificial delay to show the "ready" state briefly or just switch
+      setTimeout(() => {
+        this.switchView('chat');
+      }, 800);
+      
     } catch (error) {
       console.error('Fetch error:', error);
-      this.showStatus(`Error: ${error instanceof Error ? error.message : 'Failed to fetch repository'}`, 'error');
+      this.updateStatus(`Error: ${error instanceof Error ? error.message : 'Failed to fetch'}`);
+      // Return to landing after error (with delay)
+      setTimeout(() => {
+        this.switchView('landing');
+        alert(`Error: ${error instanceof Error ? error.message : 'Failed to fetch'}`);
+      }, 2000);
     }
   }
 
+  private updateStatus(msg: string): void {
+    if (this.loadingStatus) this.loadingStatus.textContent = msg;
+  }
+
+  private async sendMessage(): Promise<void> {
+    const question = this.chatInput.value.trim();
+    if (!question || !this.repositoryData) return;
+
+    this.addMessage('user', question);
+    this.chatInput.value = '';
+    this.chatInput.disabled = true;
+    this.chatSendBtn.disabled = true;
+
+    // Optional: show temporary loading message or keep user on chat view
+    const loadingId = this.addMessage('assistant', 'Analyzing...', true);
+
+    try {
+      // 1. Reasoning
+      const reasoningResult = await this.reasoningOrchestrator.analyze(
+        {
+          files: this.repositoryData.files,
+          structure: this.repositoryData.structure,
+          totalFiles: this.repositoryData.totalFiles,
+          totalSize: this.repositoryData.totalSize,
+          metadata: {}
+        },
+        question
+      );
+
+      // 2. Model Response
+      const context = this.gitParser.formatRepositoryContext(this.repositoryData);
+      const response = await this.modelLoader.analyzeRepository(context, question, reasoningResult.summary, 'general');
+      
+      this.updateMessage(loadingId, response);
+    } catch (error) {
+      console.error('Chat error:', error);
+      this.updateMessage(loadingId, `Error: ${error instanceof Error ? error.message : 'Failed to generate response'}`);
+    } finally {
+      this.chatInput.disabled = false;
+      this.chatSendBtn.disabled = false;
+      this.chatInput.focus();
+    }
+  }
+
+  private addMessage(role: 'user' | 'assistant', content: string, isLoading = false): string {
+    const messageId = `msg-${Date.now()}-${Math.random()}`;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+    messageDiv.id = messageId;
+
+    const senderDiv = document.createElement('div');
+    senderDiv.className = 'message-sender';
+    senderDiv.textContent = role === 'user' ? 'You' : 'Assistant';
+
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.className = 'message-bubble';
+    
+    if (isLoading) {
+      bubbleDiv.innerHTML = '<i>Analyzing...</i>';
+    } else {
+      bubbleDiv.innerHTML = this.formatContent(content);
+    }
+
+    messageDiv.appendChild(senderDiv);
+    messageDiv.appendChild(bubbleDiv);
+    
+    this.chatMessages.appendChild(messageDiv);
+    this.scrollToBottom();
+    
+    return messageId;
+  }
+
+  private updateMessage(messageId: string, content: string): void {
+    const messageDiv = document.getElementById(messageId);
+    if (messageDiv) {
+      const bubble = messageDiv.querySelector('.message-bubble');
+      if (bubble) {
+        bubble.innerHTML = this.formatContent(content);
+      }
+    }
+    this.scrollToBottom();
+  }
+
+  private formatContent(content: string): string {
+    // Simple markdown-like formatting
+    return content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\n/g, '<br>');
+  }
+
+  private scrollToBottom(): void {
+    setTimeout(() => {
+      this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }, 50);
+  }
+
   private async fetchRepositoryFromUrl(repoUrl: string): Promise<RepositoryData> {
+     // Re-using existing logic
     const candidates = this.buildZipUrls(repoUrl);
     let resp: Response | null = null;
     for (const candidate of candidates) {
@@ -196,7 +318,8 @@ export class App {
       totalSize
     };
   }
-
+  
+  // Helpers from original code
   private buildZipUrls(repoUrl: string): string[] {
     const cleaned = repoUrl.replace(/\.git$/, '');
     const parts = cleaned.split('/');
@@ -211,7 +334,6 @@ export class App {
   }
 
   private normalizeZipPath(path: string): string {
-    // Remove leading top-level folder from GitHub zip (repo-branch/)
     const segments = path.split('/');
     if (segments.length <= 1) return '';
     segments.shift();
@@ -252,11 +374,9 @@ export class App {
 
   private buildStructure(files: any[]): string {
     const tree: Record<string, any> = {};
-    
     for (const file of files) {
       const parts = file.path.split('/').filter((p: string) => p);
       let current = tree;
-      
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
         if (i === parts.length - 1) {
@@ -269,11 +389,9 @@ export class App {
         }
       }
     }
-    
     const formatTree = (obj: any, indent = 0): string => {
       let result = '';
       const spaces = '  '.repeat(indent);
-      
       for (const [key, value] of Object.entries(obj)) {
         if (value === 'FILE') {
           result += `${spaces}${key}\n`;
@@ -282,165 +400,18 @@ export class App {
           result += formatTree(value, indent + 1);
         }
       }
-      
       return result;
     };
-    
     return formatTree(tree);
   }
 
-  private showStatus(message: string, type: 'info' | 'success' | 'error' | 'warning'): void {
-    this.statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
-  }
-
-  private updateFileTree(): void {
-    if (!this.repositoryData) return;
-    const fileTree = this.container.querySelector('#file-tree') as HTMLElement;
-    if (!fileTree) return;
-    fileTree.style.display = 'block';
-    const formattedTree = this.repositoryData.structure
-      .split('\n')
-      .filter(Boolean)
-      .slice(0, 120)
-      .map(line => `<div>${line}</div>`)
-      .join('');
-    const more = this.repositoryData.structure.split('\n').length > 120 ? '<div>... (truncated for display)</div>' : '';
-    fileTree.innerHTML = formattedTree + more;
-  }
-
-  private updateReasoningUI(result: CombinedReasoning | null): void {
-    if (!this.reasoningSummaryEl || !this.securityListEl || !this.architectureListEl || !this.qualityListEl) return;
-    if (!result) {
-      this.reasoningSummaryEl.textContent = 'Reasoning insights will appear here after you ask a question.';
-      this.securityListEl.innerHTML = '';
-      this.architectureListEl.innerHTML = '';
-      this.qualityListEl.innerHTML = '';
-      return;
-    }
-
-    this.reasoningSummaryEl.textContent = `${result.summary} (confidence ${(result.aggregatedConfidence * 100).toFixed(1)}%)`;
-
-    const renderList = (el: HTMLElement, items: string[]) => {
-      el.innerHTML = items.length
-        ? items.map(item => `<li>${item}</li>`).join('')
-        : '<li>No items reported.</li>';
-    };
-
-    renderList(this.securityListEl, result.securityConcerns);
-    renderList(this.architectureListEl, result.architectureInsights);
-    renderList(this.qualityListEl, result.codeQualityIssues || []);
-  }
-
-  private async sendMessage(): Promise<void> {
-    const question = this.chatInput.value.trim();
-    if (!question || !this.repositoryData) return;
-
-    // Add user message
-    this.addMessage('user', question);
-    this.chatInput.value = '';
-    this.chatInput.disabled = true;
-    this.sendButton.disabled = true;
-
-    const loadingId = this.addMessage('assistant', 'Analyzing repository...', true);
-    this.showStatus('Analyzing...', 'info');
-
-    try {
-      // 1. Pre-processing & Reasoning (OpenReason + AdaReasoner)
-      const reasoningResult = await this.reasoningOrchestrator.analyze(
-        {
-          files: this.repositoryData.files,
-          structure: this.repositoryData.structure,
-          totalFiles: this.repositoryData.totalFiles,
-          totalSize: this.repositoryData.totalSize,
-          metadata: {}
-        },
-        question
-      );
-      this.updateReasoningUI(reasoningResult);
-
-      // Format repository context
-      const context = this.gitParser.formatRepositoryContext(this.repositoryData);
-      
-      // Get response from model (with Multi-Model support)
-      // Pass reasoning insights to model
-      const response = await this.modelLoader.analyzeRepository(context, question, reasoningResult.summary, 'general');
-      
-      // Update message
-      this.updateMessage(loadingId, response);
-      this.showStatus('Ready.', 'success');
-    } catch (error) {
-      console.error('Error generating response:', error);
-      this.updateMessage(loadingId, `Error: ${error instanceof Error ? error.message : 'Failed to generate response'}`);
-      this.showStatus('Error during analysis.', 'error');
-    } finally {
-      this.chatInput.disabled = false;
-      this.sendButton.disabled = false;
-      this.chatInput.focus();
-    }
-  }
-
-  private addMessage(role: 'user' | 'assistant', content: string, isLoading = false): string {
-    const messageId = `msg-${Date.now()}-${Math.random()}`;
-    const messageDiv = document.createElement('div');
-    messageDiv.id = messageId;
-    messageDiv.className = `message ${role}`;
-    
-    const header = document.createElement('div');
-    header.className = 'message-header';
-    header.innerHTML = `${role === 'user' ? this.icons.user : this.icons.assistant} ${role === 'user' ? 'You' : 'Assistant'}`;
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    if (isLoading) {
-      contentDiv.innerHTML = '<span class="loading"></span> ' + content;
-    } else {
-      // Basic formatting for code blocks
-      const formattedContent = content
-        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>');
-      contentDiv.innerHTML = formattedContent;
-    }
-    
-    // Auto-scroll
-    setTimeout(() => {
-      this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-    }, 100);
-    
-    messageDiv.appendChild(header);
-    messageDiv.appendChild(contentDiv);
-    this.chatMessages.appendChild(messageDiv);
-    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-    
-    return messageId;
-  }
-
-  private updateMessage(messageId: string, content: string): void {
-    const messageDiv = document.getElementById(messageId);
-    if (messageDiv) {
-      const contentDiv = messageDiv.querySelector('.message-content');
-      if (contentDiv) {
-        // Basic formatting for code blocks
-        const formattedContent = content
-          .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>');
-        contentDiv.innerHTML = formattedContent;
-      }
-    }
-    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-  }
-
   private async initializeModel(): Promise<void> {
-    this.showStatus('Initializing AI model... This may take a moment.', 'info');
-    
+    // Hidden initialization in background
     try {
       await this.modelLoader.initialize();
-      this.showStatus('sked ready. Upload a repository to begin analysis.', 'success');
+      console.log('Model initialized');
     } catch (error) {
       console.error('Model initialization error:', error);
-      this.showStatus(
-        `Model initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please refresh the page.`,
-        'error'
-      );
     }
   }
 }
