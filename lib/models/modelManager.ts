@@ -54,28 +54,33 @@ export class ModelManager {
       ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/qwen2.5-0.5b-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm'
       : 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/llama-2-7b-chat-hf-q4f32_1-webgpu.wasm';
 
-    // Explicit GGUF URLs per model to avoid undefined model_url
-    const primaryModelUrl = 'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4f16_1-ctx4k.gguf';
-    const fallbackQwenUrl = 'https://huggingface.co/Triangle104/qwen2.5-.5b-uncensored-Q8_0-GGUF/resolve/main/qwen2.5-.5b-uncensored-q8_0.gguf';
-    const fallbackLlamaUrl = 'https://huggingface.co/afrideva/llama2_xs_460M_uncensored-GGUF/resolve/main/llama2_xs_460m_uncensored.q8_0.gguf';
+    let modelRecord: any = {
+      model_id: modelDef.id,
+      model_lib: baseWasm,
+      model_lib_url: baseWasm,
+      vram_required_MB: 1024,
+      required_features: ['shader-f16']
+    };
 
-    let modelUrl = primaryModelUrl;
-    if (modelDef.id === MODELS.FALLBACK_1.id) modelUrl = fallbackQwenUrl;
-    if (modelDef.id === MODELS.FALLBACK_2.id) modelUrl = fallbackLlamaUrl;
-
+    if (modelDef.id === MODELS.PRIMARY.id) {
+      // Use official MLC weights for primary model (Reliable, Sharded, Cache-friendly)
+      // This avoids large-file cache failures and CORS issues with direct GGUF
+      const mlcUrl = 'https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+      modelRecord.model = mlcUrl;
+      modelRecord.model_url = mlcUrl;
+    } else {
+      // Fallback GGUF models
+      const fallbackQwenUrl = 'https://huggingface.co/Triangle104/qwen2.5-.5b-uncensored-Q8_0-GGUF/resolve/main/qwen2.5-.5b-uncensored-q8_0.gguf';
+      const fallbackLlamaUrl = 'https://huggingface.co/afrideva/llama2_xs_460M_uncensored-GGUF/resolve/main/llama2_xs_460m_uncensored.q8_0.gguf';
+      
+      let url = modelDef.id === MODELS.FALLBACK_1.id ? fallbackQwenUrl : fallbackLlamaUrl;
+      modelRecord.model = url;
+      modelRecord.model_url = url;
+      modelRecord.model_format = 'gguf';
+    }
+    
     return {
-      model_list: [
-        {
-          model: modelUrl,
-          model_url: modelUrl,
-          model_id: modelDef.id,
-          model_lib: baseWasm,
-          model_lib_url: baseWasm,
-          vram_required_MB: 1024,
-          required_features: ['shader-f16'],
-          model_format: 'gguf'
-        }
-      ]
+      model_list: [modelRecord]
     } as any;
   }
 
