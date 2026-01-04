@@ -63,22 +63,6 @@ export class ModelManager {
     if (modelDef.id === MODELS.FALLBACK_1.id) modelUrl = fallbackQwenUrl;
     if (modelDef.id === MODELS.FALLBACK_2.id) modelUrl = fallbackLlamaUrl;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/f54893f3-5b11-478e-b415-20d8449da7d5', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'run-pre-fix',
-        hypothesisId: 'H1-model-url-undefined',
-        location: 'modelManager.ts:getAppConfig',
-        message: 'appConfig constructed',
-        data: { modelId, modelUrl, modelLib: baseWasm, hasModelDef: !!modelDef },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
-
     return {
       model_list: [
         {
@@ -109,27 +93,6 @@ export class ModelManager {
     try {
       const appConfig = this.getAppConfig(modelId);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/f54893f3-5b11-478e-b415-20d8449da7d5', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'debug-session',
-          runId: 'run-pre-fix',
-          hypothesisId: 'H1-model-url-undefined',
-          location: 'modelManager.ts:initialize',
-          message: 'before CreateMLCEngine',
-          data: {
-            modelId,
-            modelUrl: appConfig?.model_list?.[0]?.model_url,
-            modelLib: appConfig?.model_list?.[0]?.model_lib,
-            modelListCount: appConfig?.model_list?.length
-          },
-          timestamp: Date.now()
-        })
-      }).catch(() => {});
-      // #endregion
-
       this.currentEngine = await CreateMLCEngine(
         modelId,
         {
