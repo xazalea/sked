@@ -54,14 +54,14 @@ export class ModelManager {
       ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/qwen2.5-0.5b-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm'
       : 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/llama-2-7b-chat-hf-q4f32_1-webgpu.wasm';
 
-    // Best-effort GGUF url guess; ensures model_url is defined to avoid endsWith crash.
-    const fileNameGuess =
-      modelDef.id.toLowerCase().includes('qwen')
-        ? 'qwen2.5-0.5b-instruct-q4f16_1-ctx4k.gguf'
-        : 'model.gguf';
-    const modelUrl = modelDef.hfUrl.endsWith('.gguf')
-      ? modelDef.hfUrl
-      : `${modelDef.hfUrl}/resolve/main/${fileNameGuess}`;
+    // Explicit GGUF URLs per model to avoid undefined model_url
+    const primaryModelUrl = 'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4f16_1-ctx4k.gguf';
+    const fallbackQwenUrl = 'https://huggingface.co/Triangle104/qwen2.5-.5b-uncensored-Q8_0-GGUF/resolve/main/qwen2.5-.5b-uncensored-q8_0.gguf';
+    const fallbackLlamaUrl = 'https://huggingface.co/afrideva/llama2_xs_460M_uncensored-GGUF/resolve/main/llama2_xs_460m_uncensored.q8_0.gguf';
+
+    let modelUrl = primaryModelUrl;
+    if (modelDef.id === MODELS.FALLBACK_1.id) modelUrl = fallbackQwenUrl;
+    if (modelDef.id === MODELS.FALLBACK_2.id) modelUrl = fallbackLlamaUrl;
 
     return {
       model_list: [
