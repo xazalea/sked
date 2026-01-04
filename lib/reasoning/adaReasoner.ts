@@ -41,15 +41,7 @@ export class AdaReasoner {
       focusAreas.push('Function Logic', 'Variable Naming', 'Code Style');
     }
 
-    // 3. Parallel Perspectives Analysis
-    // AdaReasoner simulates looking at the code from multiple "personas"
-    const perspectives = [
-      { name: 'Attacker', focus: 'Exploits' },
-      { name: 'Maintainer', focus: 'Readability' },
-      { name: 'Performance Engineer', focus: 'Optimization' }
-    ];
-    
-    // Simple heuristic to pick relevant perspectives based on question
+    // 3. Perspective selection heuristic
     if (question.toLowerCase().includes('optimize') || question.toLowerCase().includes('fast')) {
       insights.push(`Perspective: Performance Engineer - Focusing on loops, database queries, and resource usage.`);
     } else if (question.toLowerCase().includes('hack') || question.toLowerCase().includes('secure')) {

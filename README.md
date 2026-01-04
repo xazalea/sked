@@ -1,11 +1,11 @@
-# Git Repository Analyzer
+# sked — Local Repo Intelligence
 
-A web-based application that runs entirely on the user's device, utilizing the [Qwen2.5-0.5B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) model from Hugging Face to analyze Git repositories locally.
+A web-based application that runs entirely on the user's device, utilizing multi-model AI (Qwen2.5 and uncensored fallbacks) plus layered reasoning to analyze Git repositories locally.
 
 ## Features
 
 - 🔒 **100% Local Processing**: All analysis happens on your device - no data leaves your browser
-- 🤖 **AI-Powered Analysis**: Uses Qwen2.5-0.5B-Instruct model for intelligent code analysis
+- 🤖 **AI-Powered Analysis**: Uses Qwen2.5-0.5B-Instruct with uncensored fallbacks (Qwen2.5 uncensored Q8_0, Llama2 XS uncensored) for thorough security/code insights
 - 📁 **Git Repository Support**: Upload and analyze entire Git repositories
 - 🔍 **Security Analysis**: Identify vulnerabilities, exploits, and security issues
 - 💬 **Interactive Q&A**: Ask questions about code functionality, architecture, and best practices
@@ -60,7 +60,7 @@ The built files will be in the `dist` directory.
 ## Technical Details
 
 - **Frontend**: TypeScript, Vite
-- **AI Model**: Qwen2.5-0.5B-Instruct-GGUF via @mlc-ai/web-llm
+- **AI Models**: Qwen2.5-0.5B-Instruct-GGUF (primary) plus uncensored fallbacks via @mlc-ai/web-llm
 - **File Processing**: Browser File API for reading repository files
 - **All processing happens client-side** - no server required
 

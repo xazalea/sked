@@ -1,5 +1,3 @@
-import { AppConfig } from '@mlc-ai/web-llm';
-
 export interface ModelDefinition {
   id: string;
   name: string;

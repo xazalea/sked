@@ -18,7 +18,7 @@ export class ModelLoader {
     this.modelManager = new ModelManager(progressCallback);
   }
 
-  async initialize(config?: ModelConfig): Promise<void> {
+  async initialize(_config?: ModelConfig): Promise<void> {
     if (this.initialized) {
       return;
     }

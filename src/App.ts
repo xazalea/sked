@@ -9,16 +9,16 @@ export class App {
   private gitParser: GitRepositoryParser;
   private reasoningOrchestrator: ReasoningOrchestrator;
   private repositoryData: RepositoryData | null = null;
-  private chatMessages: HTMLElement;
-  private chatInput: HTMLTextAreaElement;
-  private sendButton: HTMLButtonElement;
-  private uploadArea: HTMLElement;
-  private statusDiv: HTMLElement;
-  private repoInfoDiv: HTMLElement;
-  private reasoningSummaryEl: HTMLElement;
-  private securityListEl: HTMLElement;
-  private architectureListEl: HTMLElement;
-  private qualityListEl: HTMLElement;
+  private chatMessages!: HTMLElement;
+  private chatInput!: HTMLTextAreaElement;
+  private sendButton!: HTMLButtonElement;
+  private uploadArea!: HTMLElement;
+  private statusDiv!: HTMLElement;
+  private repoInfoDiv!: HTMLElement;
+  private reasoningSummaryEl!: HTMLElement;
+  private securityListEl!: HTMLElement;
+  private architectureListEl!: HTMLElement;
+  private qualityListEl!: HTMLElement;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -40,8 +40,8 @@ export class App {
       <div class="jp-matrix">${matrixHTML}</div>
       <div class="app-container">
         <div class="header">
-          <h1>🔍 Git Repository Analyzer</h1>
-          <p>Local AI-powered code analysis using Qwen2.5-0.5B-Instruct</p>
+          <h1>🔍 sked — Local Repo Intelligence</h1>
+          <p>All-client analysis with multi-model AI and deep reasoning</p>
           <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 20px;">
             <label class="torch-container" style="color: white; font-size: 0.9rem;">
               <input type="checkbox" id="model-toggle" checked>
@@ -170,7 +170,7 @@ export class App {
                 <div class="message assistant">
                   <div class="message-header">Assistant</div>
                   <div class="message-content">
-                    👋 Hello! Upload a Git repository to get started. I can help you analyze:
+                    👋 Welcome to sked. Upload a repo to start a full local analysis. I can help you with:
                     <ul style="margin-top: 8px; padding-left: 20px;">
                       <li>Code functionality and architecture</li>
                       <li>Security vulnerabilities</li>
@@ -619,7 +619,7 @@ export class App {
     
     try {
       await this.modelLoader.initialize();
-      this.showStatus('Model ready! Upload a repository to begin analysis.', 'success');
+      this.showStatus('sked ready. Upload a repository to begin analysis.', 'success');
     } catch (error) {
       console.error('Model initialization error:', error);
       this.showStatus(
