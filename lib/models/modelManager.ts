@@ -50,9 +50,9 @@ export class ModelManager {
     }
 
     // Use a permissive any-typed config to satisfy TS while passing through to MLC.
-    // Use the specific Qwen2.5 0.5B WASM that matches the MLC weights
+    // Use the Qwen2-7B WASM (compatible with Qwen2.5-0.5B architecture)
     const baseWasm = modelDef.modelLib === 'qwen2'
-      ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/qwen2.5-0.5b-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm'
+      ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/qwen2-7b-instruct-q4f16_1-v1-webgpu.wasm'
       : 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/llama-2-7b-chat-hf-q4f32_1-webgpu.wasm';
 
     let modelRecord: any = {
