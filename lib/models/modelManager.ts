@@ -59,7 +59,7 @@ export class ModelManager {
         {
           model_url: modelDef.hfUrl,
           model_id: modelDef.id,
-          model_lib_url: baseWasm,
+          model_lib: baseWasm,
           vram_required_MB: 1024,
           required_features: ['shader-f16']
         }
