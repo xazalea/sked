@@ -54,12 +54,22 @@ export class ModelManager {
       ? 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/qwen2.5-0.5b-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm'
       : 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/llama-2-7b-chat-hf-q4f32_1-webgpu.wasm';
 
+    // Best-effort GGUF url guess; ensures model_url is defined to avoid endsWith crash.
+    const fileNameGuess =
+      modelDef.id.toLowerCase().includes('qwen')
+        ? 'qwen2.5-0.5b-instruct-q4f16_1-ctx4k.gguf'
+        : 'model.gguf';
+    const modelUrl = modelDef.hfUrl.endsWith('.gguf')
+      ? modelDef.hfUrl
+      : `${modelDef.hfUrl}/resolve/main/${fileNameGuess}`;
+
     return {
       model_list: [
         {
-          model_url: modelDef.hfUrl,
+          model_url: modelUrl,
           model_id: modelDef.id,
           model_lib: baseWasm,
+          model_lib_url: baseWasm,
           vram_required_MB: 1024,
           required_features: ['shader-f16']
         }
