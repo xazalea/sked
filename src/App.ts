@@ -2,7 +2,6 @@ import JSZip from 'jszip';
 import { ModelLoader } from '../lib/modelLoader';
 import { GitRepositoryParser, RepositoryData } from '../lib/gitParser';
 import { ReasoningOrchestrator } from '../lib/reasoning/orchestrator';
-import { CombinedReasoning } from '../lib/reasoning/types';
 
 export class App {
   private container: HTMLElement;
@@ -20,7 +19,7 @@ export class App {
   private chatSendBtn!: HTMLButtonElement;
   
   // State
-  private currentView: 'landing' | 'loading' | 'chat' = 'landing';
+  // private currentView: 'landing' | 'loading' | 'chat' = 'landing';
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -107,7 +106,7 @@ export class App {
   }
 
   private switchView(view: 'landing' | 'loading' | 'chat'): void {
-    this.currentView = view;
+    // this.currentView = view;
     
     // Hide all
     this.container.querySelectorAll('.view-container').forEach(el => {
