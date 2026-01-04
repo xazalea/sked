@@ -58,7 +58,7 @@ export class ModelManager {
     // Use a permissive any-typed config to satisfy TS while passing through to MLC.
     // Explicitly define the Qwen2.5-0.5B record because automatic lookup is failing in some environments.
     // Using the official MLC prebuilt weights and wasm.
-    const qwenModelId = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+    // const qwenModelId = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
     const qwenWasm = 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v2_archives/Qwen2.5-0.5B-Instruct-q4f16_1-MLC/qwen2.5-0.5b-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm';
     
     if (modelDef.id === MODELS.PRIMARY.id) {
